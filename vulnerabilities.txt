@@ -1,0 +1,23 @@
+1. Insecure deserialization - pickle.loads() on user-supplied, base64-decoded data at app.py:13. Pickle deserialization of untrusted input is arbitrary code execution
+
+2. Privileged container (docker-compose.yml:9) - privileged: true means container has root access to the host kernel
+
+3. No authentication on /process (app.py:9-17) — anyone who can reach port 80 can trigger the RCE; nothing gates the endpoint.
+
+4. App(port 80) and Redis(port 6379) port exposed to network - App should behind a reverse proxy like Nginx and the Redis port never should exposed to outside. App and Redis both running on same compose network and app can already reach redis. 
+
+5. Container run as root(Dockerfile - no USER directive) -  no privilege drop inside the container, so any compromise runs with root inside it
+
+6. Hardcoded credentials (app.py:7, docker-compose.yml:18) — Redis password admin_password_123 committed in plaintext in two places.
+
+
+
+
+
+
+1. Redis password hard coded in the app.py
+2. Code does not validate payload
+3. Redis password is hardcoded in docker-compose.yml
+
+
+
