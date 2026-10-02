@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Write .env file from secret
+        run: echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" > .env
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Start stack
+        run: docker compose up -d
+
+      - name: Wait for web-api to be ready
+        run: sleep 5
+
+      - name: Smoke test /process endpoint
+        run: |
+          PAYLOAD=$(echo -n '"University of Colombo School of Computing"' | base64)
+          RESPONSE=$(curl -s -X POST http://127.0.0.1/process \
+            -H "Content-Type: application/json" \
+            -d "{\"payload\": \"$PAYLOAD\"}")
+          echo "Response: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"processed"'
+
+      - name: Verify no ports exposed except nginx (80)
+        run: |
+          EXPOSED=$(docker compose ps --format '{{.Name}} {{.Publishers}}')
+          echo "$EXPOSED"
+          if echo "$EXPOSED" | grep -E 'web-api|broker' | grep -q '0.0.0.0'; then
+            echo "web-api or broker has a published host port — failing build"
+            exit 1
+          fi
+
+      - name: Stop stack
+        if: always()
+        run: docker compose down -v
