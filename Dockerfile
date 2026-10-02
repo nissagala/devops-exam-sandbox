@@ -1,22 +1,19 @@
-# VULNERABILITY: Using a massive base image (includes compilers, shells, and tools)
-FROM python:3.11
+FROM dhi.io/python:3.11-debian13-dev AS builder
 
-# VULNERABILITY: Running as root by default
 WORKDIR /app
 
-# VULNERABILITY: Copying sensitive local files (like .env or .git) into the image
+COPY app/requirements.txt .
+
+RUN python3 -m pip install --target=/install -r requirements.txt
+
+FROM dhi.io/python:3.11-debian13
+
+WORKDIR /app
+
+COPY --from=builder /install /usr/lib/python3.11/site-packages
+
 COPY app/ .
 
-# VULNERABILITY: No caching optimization for layers
-RUN pip install flask redis rq
+EXPOSE 8080
 
-RUN useradd --create-home --uid 1000 appuser \
-    && chown -R appuser:appuser /app
-
-USER appuser
-
-# VULNERABILITY: Exposing a privileged port
-EXPOSE 80
-
-# VULNERABILITY: Using a shell-based entrypoint which is susceptible to shell injection
-CMD python app.py
+CMD ["python3", "app.py"]
