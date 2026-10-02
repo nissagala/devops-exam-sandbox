@@ -2,6 +2,8 @@ version: '3'
 services:
   web-api:
     build: .
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
     depends_on:
       - broker
 
@@ -15,5 +17,7 @@ services:
       - web-api
 
   broker:
-    image: redis:latest # VULNERABILITY: Using 'latest' tag (Mutable/Unpredictable)
-    command: redis-server --requirepass admin_password_123
+    image: redis:latest # VULNERABILITY: Using 'latest' tag
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: redis-server --requirepass ${REDIS_PASSWORD}
