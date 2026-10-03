@@ -13,11 +13,3 @@
 
 
 
-
-
-1. Redis password hard coded in the app.py
-2. Code does not validate payload
-3. Redis password is hardcoded in docker-compose.yml
-
-
-
