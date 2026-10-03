@@ -7,7 +7,11 @@ on:
 jobs:
   build-and-test:
     runs-on: self-hosted
-
+    permissions: 
+      contents: read
+      packages: write
+      id-token: write
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -41,6 +45,36 @@ jobs:
             echo "web-api or broker has a published host port — failing build"
             exit 1
           fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag and push image to GHCR
+        id: push
+        run: |
+          IMAGE=ghcr.io/nissagala/devops-exam-sandbox
+          TAG=${{ github.sha }}
+          docker tag devops-exam-sandbox-web-api:latest $IMAGE:$TAG
+          docker push $IMAGE:$TAG
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' $IMAGE:$TAG)
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image with cosign
+        run: cosign sign --yes ${{ steps.push.outputs.digest }}
+
+      - name: Verify image signature
+        run: |
+          cosign verify ${{ steps.push.outputs.digest }} \
+            --certificate-identity-regexp "https://github.com/nissagala/devops-exam-sandbox/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+
 
       - name: Stop stack
         if: always()
